@@ -1,0 +1,20 @@
+name = "tdserver"
+main = "src/index.ts"
+compatibility_date = "2026-01-01"
+
+[[kv_namespaces]]
+binding = "LEVELS"
+id = "89f81f888f9b47b9975b173e20e060cb"
+preview_id = "89f81f888f9b47b9975b173e20e060cb"
+
+[[kv_namespaces]]
+binding = "MUSIC"
+id = "8c624f7262a74483a185486576e00d16"
+preview_id = "8c624f7262a74483a185486576e00d16"
+
+[[r2_buckets]]
+binding = "AUDIO"
+bucket_name = "teleporterdash-audio"
+
+[vars]
+ALLOWED_ORIGIN = "https://teleporterdash.github.io"

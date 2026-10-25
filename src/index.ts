@@ -22,7 +22,7 @@
 import { handleListLevels, handleGetLevel, handlePostLevel } from "./routes/levels";
 import { handleRating, handleComment } from "./routes/interactions";
 import { handleListMusic, handleGetMusic, handlePostMusic, handleDeleteMusic } from "./routes/music";
-import { getAllowedOrigin, corsPreflightResponse } from "./middleware/cors";
+import { getAllowedOrigin, applyCorsHeaders, corsPreflightResponse, isOriginAllowed } from "./middleware/cors";
 import { checkRateLimit, getClientIp } from "./middleware/rateLimit";
 
 export interface Env {
@@ -39,10 +39,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const origin = getAllowedOrigin(env);
+    const requestOrigin = request.headers.get("Origin") || "";
     const clientIp = getClientIp(request);
 
     if (request.method === "OPTIONS") {
-      return corsPreflightResponse(origin);
+      return corsPreflightResponse(origin, requestOrigin);
     }
 
     if (url.pathname === "/health" && request.method === "GET") {
@@ -53,14 +54,16 @@ export default {
         music: "connected",
         audio: "connected",
       };
-      return new Response(JSON.stringify(health), {
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin },
+      const resp = new Response(JSON.stringify(health), {
+        headers: { "Content-Type": "application/json" },
       });
+      return applyCorsHeaders(resp, origin, requestOrigin);
     }
 
 
     if (url.pathname === "/levels" && request.method === "GET") {
-      return handleListLevels({ request, env, params: {}, origin });
+      const resp = await handleListLevels({ request, env, params: {}, origin });
+      return applyCorsHeaders(resp, origin, requestOrigin);
     }
 
     const levelMatch = url.pathname.match(/^\/level\/(\d+)(?:\/(rating|comment))?$/);
@@ -70,7 +73,8 @@ export default {
 
       if (!action) {
         if (request.method === "GET") {
-          return handleGetLevel({ request, env, params: { id }, origin });
+          const resp = await handleGetLevel({ request, env, params: { id }, origin });
+          return applyCorsHeaders(resp, origin, requestOrigin);
         }
       }
 
@@ -78,20 +82,22 @@ export default {
         if (!checkRateLimit(clientIp, WRITE_RATE_LIMIT)) {
           return new Response(
             JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
-            { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin } }
+            { status: 429, headers: { "Content-Type": "application/json" } },
           );
         }
-        return handleRating({ request, env, params: { id }, origin });
+        const resp = await handleRating({ request, env, params: { id }, origin });
+        return applyCorsHeaders(resp, origin, requestOrigin);
       }
 
       if (action === "comment" && request.method === "POST") {
         if (!checkRateLimit(clientIp, WRITE_RATE_LIMIT)) {
           return new Response(
             JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
-            { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin } }
+            { status: 429, headers: { "Content-Type": "application/json" } },
           );
         }
-        return handleComment({ request, env, params: { id }, origin });
+        const resp = await handleComment({ request, env, params: { id }, origin });
+        return applyCorsHeaders(resp, origin, requestOrigin);
       }
     }
 
@@ -99,25 +105,28 @@ export default {
       if (!checkRateLimit(clientIp, WRITE_RATE_LIMIT)) {
         return new Response(
           JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
-          { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin } }
+          { status: 429, headers: { "Content-Type": "application/json" } },
         );
       }
-      return handlePostLevel({ request, env, params: {}, origin });
+      const resp = await handlePostLevel({ request, env, params: {}, origin });
+      return applyCorsHeaders(resp, origin, requestOrigin);
     }
 
 
     if (url.pathname === "/music" && request.method === "GET") {
-      return handleListMusic({ request, env, params: {}, origin });
+      const resp = await handleListMusic({ request, env, params: {}, origin });
+      return applyCorsHeaders(resp, origin, requestOrigin);
     }
 
     if (url.pathname === "/music" && request.method === "POST") {
       if (!checkRateLimit(clientIp, WRITE_RATE_LIMIT)) {
         return new Response(
           JSON.stringify({ success: false, error: "Rate limit exceeded. Try again later." }),
-          { status: 429, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin } }
+          { status: 429, headers: { "Content-Type": "application/json" } },
         );
       }
-      return handlePostMusic({ request, env, params: {}, origin });
+      const resp = await handlePostMusic({ request, env, params: {}, origin });
+      return applyCorsHeaders(resp, origin, requestOrigin);
     }
 
     const musicMatch = url.pathname.match(/^\/music\/(\d+)$/);
@@ -125,21 +134,24 @@ export default {
       const id = musicMatch[1];
 
       if (request.method === "GET") {
-        return handleGetMusic({ request, env, params: { id }, origin });
+        const resp = await handleGetMusic({ request, env, params: { id }, origin });
+        return applyCorsHeaders(resp, origin, requestOrigin);
       }
 
       if (request.method === "DELETE") {
-        return handleDeleteMusic({ request, env, params: { id }, origin });
+        const resp = await handleDeleteMusic({ request, env, params: { id }, origin });
+        return applyCorsHeaders(resp, origin, requestOrigin);
       }
     }
 
     // 404 for everything else
-    return new Response(
+    const resp = new Response(
       JSON.stringify({ error: "Not found" }),
       {
         status: 404,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": origin },
+        headers: { "Content-Type": "application/json" },
       }
     );
+    return applyCorsHeaders(resp, origin, requestOrigin);
   },
 };

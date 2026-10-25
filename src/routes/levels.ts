@@ -24,6 +24,9 @@ export async function handleListLevels(ctx: RouteContext): Promise<Response> {
   headers.set("Content-Type", "application/json");
   headers.set("Access-Control-Allow-Origin", ctx.origin);
 
+  const url = new URL(ctx.request.url);
+  const full = url.searchParams.get("full") === "true";
+
   const keys = await ctx.env.LEVELS.list({ prefix: "level:" });
   const summaries: LevelSummary[] = [];
 
@@ -32,14 +35,18 @@ export async function handleListLevels(ctx: RouteContext): Promise<Response> {
     if (!raw) continue;
     try {
       const level: LevelData = JSON.parse(raw);
-      summaries.push({
-        id: level.id,
-        title: level.title,
-        rating: level.rating || 0,
-        commentCount: (level.comments || []).length,
-        plays: level.plays || 0,
-        author: level.author,
-      });
+      if (full) {
+        summaries.push(level as unknown as LevelSummary);
+      } else {
+        summaries.push({
+          id: level.id,
+          title: level.title,
+          rating: level.rating || 0,
+          commentCount: (level.comments || []).length,
+          plays: level.plays || 0,
+          author: level.author,
+        });
+      }
     } catch {
       continue;
     }

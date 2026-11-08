@@ -33,7 +33,7 @@ export interface Env {
   [key: string]: unknown;
 }
 
-const WRITE_RATE_LIMIT = { maxRequests: 1000, windowMs: 3_600_000 };
+const WRITE_RATE_LIMIT = { maxRequests: 100, windowMs: 3_600_000 };
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
